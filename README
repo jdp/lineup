@@ -74,4 +74,14 @@
     example:
     
       $16\r\n
-      A STUPID MESSAGE\r\n
+      A STUPID MESSAGE\r\n\
+
+% credits
+
+  (c) 2009 justin poliey http://justinpoliey.com
+  protocol inspired by:
+    redis http://code.google.com/p/redis
+    memcached http://memcached.org
+  built with:
+    lua http://lua.org
+    libevent2 http://www.monkey.org/~provos/libevent/
