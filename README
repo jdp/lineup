@@ -1,0 +1,77 @@
+% lineup, a tiny queue server
+
+  lineup is a queue server with lua event hooks
+  meaning that every aspect of the server is
+  totally scriptable.
+  
+  it's also designed to be as small, simple, and
+  hackable as possible.
+
+% protocol
+
+  % client commands
+  
+    ---
+    
+    PUSH <priority> <message-length>\r\n
+    <message>\r\n
+  
+    adds a new message to the queue.
+    <priority> is the priority of the message. the lower
+      it is, the higher priority the message has.
+    <message-length> is the length in bytes of the
+      <message> field.
+    <message> is a binary blob of <message-length> bytes
+      and is the data added to the queue.
+    returns OK on success, in inline format
+    returns an error message otherwise, in error format
+  
+    ---
+    
+    POP\r\n
+  
+    the take command removes the first job from the queue
+    returns the message on success, in message format
+    returns an error message otherwise, in error format
+    
+    ---
+    
+  % server responses:
+  
+    ---
+    
+    inline format
+    
+    inline format messages are prefixed with a + and end
+    with a literal \r\n.
+    
+    example:
+    
+      +OK\r\n
+      
+    ---
+    
+    error format
+    
+    error format messages are prefixed with a - and end
+    with a literal \r\n. this is to help clients
+    differentiate between success and error messages
+    without having to keep some sort of table.
+    
+    example:
+    
+      -Out of memory\r\n
+      
+    ---
+    
+    message format
+    
+    message format messages are prefixed with a $ and are
+    followed by the size of the message in bytes, then a
+    literal \r\n. then the binary blob of the message comes
+    after that, also followed by an \r\n.
+    
+    example:
+    
+      $16\r\n
+      A STUPID MESSAGE\r\n
