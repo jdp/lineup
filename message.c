@@ -128,7 +128,7 @@ MessageQueue_bubble_down(MessageQueue *q, unsigned int k)
     }
     if (swap == k) {
     	return;
-    }/* already satisfies the heap property */
+    }
  
     MessageQueue_swap(q, k, swap);
     MessageQueue_bubble_down(q, swap);
