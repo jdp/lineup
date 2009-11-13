@@ -1,14 +1,16 @@
-SRC = lineup.c server.c message.c
+SRC = lineup.c server.c message.c scripting.c
 OBJ = ${SRC:.c=.o}
 CC = gcc
+CFLAGS = -ansi -pedantic -Wall
+LLUA = -llua5.1 # some systems need lua version. -llua might work
+LIBS = -levent $(LLUA)
 OUT = lineup
-LIBS = -levent
 
 $(OUT): $(OBJ)
 	$(CC) -o $@ $(OBJ) $(LIBS)
 	
 .c.o:
-	$(CC) -c $<
+	$(CC) $(CFLAGS) -c $<
 	
 clean:
 	rm *.o

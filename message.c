@@ -48,14 +48,20 @@ MessageQueue_grow(MessageQueue *mq)
  * Returns a pointer to the message.
  */
 Message *
-Message_create(int priority, char *message)
+Message_create(int priority, char *message, size_t size)
 {
 	Message *m;
 	if ((m = (Message *)malloc(sizeof(Message))) == NULL) {
 		return NULL;
 	}
-	m->message = strdup(message);
+	m->message = (char *)malloc(sizeof(char)*size);
+	if (m->message == NULL) {
+		free(m);
+		return NULL;
+	}
+	memcpy(m->message, message, size);
 	m->priority = priority;
+	m->size = size;
 	return m;
 }
 
@@ -191,10 +197,10 @@ MessageQueue_peek(MessageQueue *mq)
 void
 tree(MessageQueue *mq, unsigned int k, int depth, char c)
 {
+	int i;
 	if (k >= mq->size) {
 		return;
 	}
-	int i;
 	for (i = 0; i < depth; i++) {
 		printf("  ");
 	}

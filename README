@@ -6,6 +6,8 @@
   
   it's also designed to be as small, simple, and
   hackable as possible.
+  
+  lineup is built on top of libevent2 and lua.
 
 % protocol
 
@@ -75,6 +77,8 @@
     
       $16\r\n
       A STUPID MESSAGE\r\n\
+      
+    ---
 
 % credits
 
