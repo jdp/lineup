@@ -1,19 +1,18 @@
-SRC = lineup.c message.c server.c
-OBJ = ${SRC:.c=.o}
-CC = gcc
-CFLAGS = -ansi -pedantic -Wall
-LIBS = -levent
+include $(GOROOT)/src/Make.$(GOARCH)
+
+.SUFFIXES: .go .$O
+
+SRC = msgqueue.go server.go main.go
+OBJ = ${SRC:.go=.$O}
 OUT = lineupd
 
 $(OUT): $(OBJ)
-	$(CC) -o $@ $(OBJ) $(LIBS)
-	
-.c.o:
-	$(CC) $(CFLAGS) -c $<
-	
-clean:
-	rm *.o
-	rm $(OUT)
-	
-PHONY: clean
+	$(LD) -o $@ $(OBJ)
 
+.go.$O:
+	$(GC) $<
+
+clean:
+	rm -f $(OBJ) $(OUT)
+
+.PHONY: clean
