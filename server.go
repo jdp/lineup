@@ -7,7 +7,7 @@ import(
 	"net";
 	"regexp";
 	"strings";
-	//"bytes";
+	"bytes";
 	"bufio";
 	. "./msgqueue"
 )
@@ -43,21 +43,19 @@ func readInt(b []byte) int {
 }
 
 /*
- * Used to enforce terminating CRLF in client requests.
+ * Utility function to expect a byte sequence from the client.
  */
-func handleCrlf(req *Request, src *bufio.Reader) (err os.Error) {
-	crlf := make([]byte, 2);
-	n, err := src.Read(crlf);
+func (s *Server) expect(req *Request, src *bufio.Reader, expected []byte) (r bool, err os.Error) {
+	b := make([]byte, len(expected));
+	_, err = src.Read(b);
 	if err != nil {
 		return;
 	}
-	if n != 2 {
-		err = os.NewError("missing 2 trailing bytes");
-		return;
+	if bytes.Compare(b, expected) == 0 {
+		r = true;
 	}
-	if crlf[0] != '\r' || crlf[1] != '\n' {
-		err = os.NewError(fmt.Sprintf("expecting [13 10], got %v", crlf));
-		return;
+	else {
+		err = os.NewError(fmt.Sprintf("expected %v, got %v", expected, b));
 	}
 	return;
 }
@@ -81,28 +79,21 @@ func handleCrlf(req *Request, src *bufio.Reader) (err os.Error) {
  *   -<error-message>\r\n
  */
 func (s *Server) handleGiveCmd(req *Request, src *bufio.Reader, priority int, size int) (err os.Error) {
-	c, err := src.ReadByte();
-	if err != nil {
-		return;
-	}
-	if c != '\n' {
-		err = os.NewError(fmt.Sprintf("expected `\\n', got `%c'", c));
+	if _, err := s.expect(req, src, []byte{'\n'}); err != nil {
 		return;
 	}
 	message := make([]byte, size);
-	nn, err := src.Read(message);
+	_, err = src.Read(message);
 	if err != nil {
 		return;
 	}
-	fmt.Printf("handleGiveCmd: read %d bytes\n", nn);
 	if len(message) < size {
 		err = os.NewError(fmt.Sprintf("message not fully read: %d of %d bytes read", len(message), size));
 		return;
 	}
-	if err := handleCrlf(req, src); err != nil {
-		return err;
+	if _, err = s.expect(req, src, []byte{'\r','\n'}); err != nil {
+		return;
 	}
-	/* Here is where the message would be inserted into the queue */
 	m := &Message{priority,message};
 	s.mq.Give(m);
 	req.conn.Write(strings.Bytes("+OK\r\n"));
@@ -124,12 +115,7 @@ func (s *Server) handleGiveCmd(req *Request, src *bufio.Reader, priority int, si
  *  -<error-message>\r\n
  */
 func (s *Server) handleTakeCmd(req *Request, src *bufio.Reader) (err os.Error) {
-	c, err := src.ReadByte();
-	if err != nil {
-		return;
-	}
-	if c != '\n' {
-		err = os.NewError(fmt.Sprintf("expected `\\n', got `%c'", c));
+	if _, err := s.expect(req, src, []byte{'\n'}); err != nil {
 		return;
 	}
 	if s.mq.Len() == 0 {
@@ -145,6 +131,32 @@ func (s *Server) handleTakeCmd(req *Request, src *bufio.Reader) (err os.Error) {
 }
 
 /*
+ * Handles PING commands from clients.
+ *
+ * Successful response:
+ *   +PONG\r\n
+ *
+ * Unsuccessful response:
+ *  -<error-message>\r\n
+ */
+func (s *Server) handlePingCmd(req *Request, src *bufio.Reader) (err os.Error) {
+	if _, err := s.expect(req, src, []byte{'\n'}); err != nil {
+		return;
+	}
+	req.conn.Write(strings.Bytes("+PONG\r\n"));
+	return;
+}
+
+/*
+ * Handles EXIT commands from clients.
+ * No response.
+ */
+func (s *Server) handleExitCmd(req *Request, src *bufio.Reader) (err os.Error) {
+	_, err = s.expect(req, src, []byte{'\n'});
+	return;
+}
+
+/*
  * This function is spawned as a goroutine for each request.
  * It reacts to commands coming from clients and handles them accordingly.
  */
@@ -156,7 +168,7 @@ func (s *Server) handle(req *Request) {
 	exitCmd, _ := regexp.Compile("^EXIT\r");
 	disconnected := false;
 	
-	//req.conn.SetReadTimeout(1e8);
+	req.conn.SetReadTimeout(int64(s.timeout) * 1e8);
 	
 	for {
 		buf := bufio.NewReader(req.conn);
@@ -165,8 +177,11 @@ func (s *Server) handle(req *Request) {
 			switch {
 				case err == os.EOF:
 					disconnected = true;
+				case err == os.EAGAIN:
+					disconnected = true;
 				default:
 					log.Stderrf("read error: %v\n", err);
+					disconnected = true;
 					break;
 			}
 		}
@@ -182,7 +197,7 @@ func (s *Server) handle(req *Request) {
 					else {
 						log.Stdoutf("GIVE: successful (priority %d; size %d) from %s; size: %d\n", priority, size, req.conn.RemoteAddr(), s.mq.Len());
 					}
-				
+			
 				// Handle the TAKE command
 				case takeCmd.Match(line):
 					if err := s.handleTakeCmd(req, buf); err != nil {
@@ -191,31 +206,38 @@ func (s *Server) handle(req *Request) {
 					else {
 						log.Stdoutf("TAKE: successful from %s; size %d\n", req.conn.RemoteAddr(), s.mq.Len());
 					}
-				
+			
 				// Handle the PING command
 				case pingCmd.Match(line):
-					req.conn.Write(strings.Bytes("+PONG\r\n"));
-					log.Stdoutf("PING: from %s\n", req.conn.RemoteAddr());
+					if err := s.handlePingCmd(req, buf); err != nil {
+						log.Stderrf("PING: failed from %s: %s\n", req.conn.RemoteAddr(), err);
+					}
+					else {
+						log.Stdoutf("PING: successful from %s\n", req.conn.RemoteAddr());
+					}
 
 				// Handle the EXIT command
 				case exitCmd.Match(line):
+					if err := s.handleExitCmd(req, buf); err != nil {
+						log.Stderrf("EXIT: failed from %s: %s\n", req.conn.RemoteAddr(), err);
+					}
+					else {
+						log.Stdoutf("EXIT: successful from %s\n", req.conn.RemoteAddr());
+					}
 					disconnected = true;
-					log.Stdoutf("EXIT: from %s\n", req.conn.RemoteAddr());
-				
+			
 				// No matching command to handle
 				default:
 					req.conn.Write(strings.Bytes("-INVALID_COMMAND\r\n"));
 					log.Stderrf("invalid command from %s\n", req.conn.RemoteAddr());
 			}
-			fmt.Printf("bytes left: %d\n", buf.Buffered());
 		}
-		fmt.Printf("waiting on nothing...\n");
-		
+	
 		if disconnected {
 			log.Stdoutf("disconnected: %s\n", req.conn.RemoteAddr());
 			req.conn.Close();
 			s.connections--;
-			break;
+			return;
 		}
 	}
 }
