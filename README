@@ -1,4 +1,4 @@
-% lineup, a tiny queue server
+lineup, a tiny queue server
 
   lineup is a very simple queue server. all it
   does is serve a binary-safe priority queue with
@@ -8,7 +8,7 @@
   it's designed to be as small, simple, and
   hackable as possible.
   
-% why?
+why?
 
   most of the reasons i made this are personal.
   
@@ -32,13 +32,11 @@
   that's not to say that lineupd is complete, not
   to any degree.
 
-% credits
+credits
 
   (c) 2009 justin poliey http://justinpoliey.com
   inspired by:
     redis http://code.google.com/p/redis
     memcached http://memcached.org
     beanstalkd http://kr.github.com/beanstalkd
-  built with:
-    libevent2 http://www.monkey.org/~provos/libevent/
 
