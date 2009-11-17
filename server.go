@@ -168,7 +168,7 @@ func (s *Server) handle(req *Request) {
 	exitCmd, _ := regexp.Compile("^EXIT\r");
 	disconnected := false;
 	
-	req.conn.SetReadTimeout(int64(s.timeout) * 1e8);
+	req.conn.SetReadTimeout(int64(s.timeout) * 1e9);
 	
 	for {
 		buf := bufio.NewReader(req.conn);
@@ -232,7 +232,6 @@ func (s *Server) handle(req *Request) {
 					log.Stderrf("invalid command from %s\n", req.conn.RemoteAddr());
 			}
 		}
-	
 		if disconnected {
 			log.Stdoutf("disconnected: %s\n", req.conn.RemoteAddr());
 			req.conn.Close();

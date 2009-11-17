@@ -1,0 +1,17 @@
+info
+ 
+  the lineup.php file is a basic php client
+  library. it does its job
+  
+  any numbers mentioned here come from a 
+  3.4ghz ubuntu 8.10 machine
+
+speed test
+
+  the speed test doesn't really mean much. it's
+  basically reflective of real-world speed, in
+  that it's not go-to-go programs communicating
+  but a client library in php communicating
+  with the server. it averages ~3000 give ops
+  and ~3500 take ops with messages 676 bytes
+  long.
