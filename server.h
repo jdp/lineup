@@ -6,10 +6,25 @@
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
 
-static void server_read_cb(struct bufferevent *, void *);
-static void server_event_cb(struct bufferevent *, short events, void *);
-static void accept_conn_cb(struct evconnlistener *, evutil_socket_t, struct sockaddr *,
-                           int, void *);
-int         Server_start(int);
+typedef struct lineup_server_t
+{
+	int port;
+	int connections;
+	MessageQueue *queue;
+} LineupServer;
+
+typedef struct lineup_connection_t
+{
+	LineupServer *server;
+	struct evbuffer *inbuf, *outbuf;
+	int waiting_on_message, msg_priority, msg_length;
+	lineup_connection_t *next;
+} LineupConnection;
+
+/* Function prototypes */
+
+int  parser_read_integer(char *, char *, int *);
+void server_client_error(LineupServer *, char *);
+int  Server_start(int);
 
 #endif

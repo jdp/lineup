@@ -1,91 +1,44 @@
 % lineup, a tiny queue server
 
-  lineup is a queue server with lua event hooks
-  meaning that every aspect of the server is
-  totally scriptable.
+  lineup is a very simple queue server. all it
+  does is serve a binary-safe priority queue with
+  a simple protocol inspired by redis and
+  memcached.
   
-  it's also designed to be as small, simple, and
+  it's designed to be as small, simple, and
   hackable as possible.
   
-  lineup is built on top of libevent2 and lua.
+% why?
 
-% protocol
-
-  % client commands
+  most of the reasons i made this are personal.
   
-    ---
+    - i wanted to
+    - i learned a lot
     
-    PUSH <priority> <message-length>\r\n
-    <message>\r\n
+  there are some pragmatic reasons too!
   
-    adds a new message to the queue.
-    <priority> is the priority of the message. the lower
-      it is, the higher priority the message has.
-    <message-length> is the length in bytes of the
-      <message> field.
-    <message> is a binary blob of <message-length> bytes
-      and is the data added to the queue.
-    returns OK on success, in inline format
-    returns an error message otherwise, in error format
+    - minimalist codebase
+    - i don't agree with how other queue servers
+      are implemented (except maybe resque)
+    - i didn't make the other ones
+    
+  i kept lineup as simple as possible, because it
+  needed to be that way. stuff like job timeouts,
+  multiple queues, etc. can all be managed by
+  client code. if your job takes too long, just
+  stop processing and requeue it. want multiple
+  queues? run multiple instances of lineupd.
   
-    ---
-    
-    POP\r\n
-  
-    the take command removes the first job from the queue
-    returns the message on success, in message format
-    returns an error message otherwise, in error format
-    
-    ---
-    
-  % server responses:
-  
-    ---
-    
-    inline format
-    
-    inline format messages are prefixed with a + and end
-    with a literal \r\n.
-    
-    example:
-    
-      +OK\r\n
-      
-    ---
-    
-    error format
-    
-    error format messages are prefixed with a - and end
-    with a literal \r\n. this is to help clients
-    differentiate between success and error messages
-    without having to keep some sort of table.
-    
-    example:
-    
-      -Out of memory\r\n
-      
-    ---
-    
-    message format
-    
-    message format messages are prefixed with a $ and are
-    followed by the size of the message in bytes, then a
-    literal \r\n. then the binary blob of the message comes
-    after that, also followed by an \r\n.
-    
-    example:
-    
-      $16\r\n
-      A STUPID MESSAGE\r\n\
-      
-    ---
+  that's not to say that lineupd is complete, not
+  to any degree.
 
 % credits
 
   (c) 2009 justin poliey http://justinpoliey.com
-  protocol inspired by:
+  inspired by:
     redis http://code.google.com/p/redis
     memcached http://memcached.org
+    beanstalkd http://kr.github.com/beanstalkd
   built with:
-    lua http://lua.org
     libevent2 http://www.monkey.org/~provos/libevent/
+
