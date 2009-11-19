@@ -3,8 +3,8 @@ package server
 import(
 	"os";
 	"fmt";
-	"log";
 	"net";
+	"log";
 	"regexp";
 	"strings";
 	"bytes";
@@ -24,8 +24,9 @@ type Request struct {
  */
 type Server struct {
 	port int; // Server port
-	timeout int;
+	timeout int; // Number of seconds to wait to disconnect clients
 	mq *MsgQueue; // Message queue
+	log *log.Logger; // Logging interface
 	connections int; // Total current connections
 	totalConnections int; // Total lifetime connections
 }
@@ -180,7 +181,7 @@ func (s *Server) handle(req *Request) {
 				case err == os.EAGAIN:
 					disconnected = true;
 				default:
-					log.Stderrf("read error: %v\n", err);
+					s.log.Logf("read error: %v\n", err);
 					disconnected = true;
 					break;
 			}
@@ -192,53 +193,57 @@ func (s *Server) handle(req *Request) {
 					matches := giveCmd.MatchSlices(line);
 					priority, size := readInt(matches[1]), readInt(matches[2]);
 					if err := s.handleGiveCmd(req, buf, priority, size); err != nil {
-						log.Stderrf("GIVE: failed (priority %d; size %d) from %s: %s\n", priority, size, req.conn.RemoteAddr(), err);
+						s.log.Logf("GIVE: failed (priority %d; size %d) from %s: %s\n", priority, size, req.conn.RemoteAddr(), err);
 					}
 					else {
-						log.Stdoutf("GIVE: successful (priority %d; size %d) from %s; size: %d\n", priority, size, req.conn.RemoteAddr(), s.mq.Len());
+						s.log.Logf("GIVE: successful (priority %d; size %d) from %s; size: %d\n", priority, size, req.conn.RemoteAddr(), s.mq.Len());
 					}
 			
 				// Handle the TAKE command
 				case takeCmd.Match(line):
 					if err := s.handleTakeCmd(req, buf); err != nil {
-						log.Stderrf("TAKE: failed from %s: %s\n", req.conn.RemoteAddr(), err);
+						s.log.Logf("TAKE: failed from %s: %s\n", req.conn.RemoteAddr(), err);
 					}
 					else {
-						log.Stdoutf("TAKE: successful from %s; size %d\n", req.conn.RemoteAddr(), s.mq.Len());
+						s.log.Logf("TAKE: successful from %s; size %d\n", req.conn.RemoteAddr(), s.mq.Len());
 					}
 			
 				// Handle the PING command
 				case pingCmd.Match(line):
 					if err := s.handlePingCmd(req, buf); err != nil {
-						log.Stderrf("PING: failed from %s: %s\n", req.conn.RemoteAddr(), err);
+						s.log.Logf("PING: failed from %s: %s\n", req.conn.RemoteAddr(), err);
 					}
 					else {
-						log.Stdoutf("PING: successful from %s\n", req.conn.RemoteAddr());
+						s.log.Logf("PING: successful from %s\n", req.conn.RemoteAddr());
 					}
 
 				// Handle the EXIT command
 				case exitCmd.Match(line):
 					if err := s.handleExitCmd(req, buf); err != nil {
-						log.Stderrf("EXIT: failed from %s: %s\n", req.conn.RemoteAddr(), err);
+						s.log.Logf("EXIT: failed from %s: %s\n", req.conn.RemoteAddr(), err);
 					}
 					else {
-						log.Stdoutf("EXIT: successful from %s\n", req.conn.RemoteAddr());
+						s.log.Logf("EXIT: successful from %s\n", req.conn.RemoteAddr());
 					}
 					disconnected = true;
 			
 				// No matching command to handle
 				default:
 					req.conn.Write(strings.Bytes("-INVALID_COMMAND\r\n"));
-					log.Stderrf("invalid command from %s\n", req.conn.RemoteAddr());
+					s.log.Logf("invalid command from %s\n", req.conn.RemoteAddr());
 			}
 		}
 		if disconnected {
-			log.Stdoutf("disconnected: %s\n", req.conn.RemoteAddr());
+			s.log.Logf("disconnected: %s\n", req.conn.RemoteAddr());
 			req.conn.Close();
 			s.connections--;
 			return;
 		}
 	}
+}
+
+func (s *Server) Logger() *log.Logger {
+	return s.log;
 }
 
 /*
@@ -248,18 +253,21 @@ func (s *Server) handle(req *Request) {
 func (s *Server) Serve() {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", s.port));
 	if err != nil {
-		log.Exitf("could not start server: %s\n", err);
+		s.log.Logf("couldn't start server: %s\n", err);
+		os.Exit(1);
 	}
-	log.Stdoutf("waiting for connections on %s\n", listener.Addr());
+	s.log.Logf("waiting for connections on %s\n", listener.Addr());
 	for {
 		conn, err := listener.Accept();
 		if err != nil {
-			log.Exitf("couldn't accept: %s\n", err);
+			s.log.Logf("couldn't accept : %s\n", err);
 		}
-		log.Stdoutf("connected: %s\n", conn.RemoteAddr());
-		s.connections++;
-		s.totalConnections++;
-		go s.handle(&Request{conn});
+		else {
+			s.log.Logf("connected: %s\n", conn.RemoteAddr());
+			s.connections++;
+			s.totalConnections++;
+			go s.handle(&Request{conn});
+		}
 	}
 }
 

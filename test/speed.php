@@ -1,3 +1,4 @@
+#!/usr/bin/env php -q
 <?php
 include "lineup.php";
 

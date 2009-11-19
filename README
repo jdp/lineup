@@ -31,6 +31,23 @@ why?
   
   that's not to say that lineupd is complete, not
   to any degree.
+  
+usage
+
+  run lineupd and it will listen on :9876, and
+  create a logfile lineupd.log and pidfile
+  lineupd.pid. if you want to explicitly set any
+  options, there are --port, --logfile, and
+  --pidfile command line options. there is also
+  the --timeout option, which sets the number of
+  seconds to wait to disconnect an idle client.
+  
+bugs
+
+  - the --daemonize option doesn't work yet. most
+    of the code is there, but i can't find a
+    plain old fork() call in the go stdlib. help
+    here would be great.
 
 credits
 
@@ -39,4 +56,5 @@ credits
     redis http://code.google.com/p/redis
     memcached http://memcached.org
     beanstalkd http://kr.github.com/beanstalkd
+    suckless http://suckless.org
 

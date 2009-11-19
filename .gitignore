@@ -1,8 +1,7 @@
 *.8
 *.6
 *.5
-goqueue
-lineupd
 8.out
 6.out
 5.out
+bin

@@ -7,12 +7,13 @@ OBJ = ${SRC:.go=.$O}
 OUT = lineupd
 
 $(OUT): $(OBJ)
-	$(LD) -o $@ $(OBJ)
+	mkdir -p bin
+	$(LD) -o bin/$@ $(OBJ)
 
 .go.$O:
 	$(GC) $<
 
 clean:
-	rm -f $(OBJ) $(OUT)
+	rm -f $(OBJ) bin/$(OUT)
 
 .PHONY: clean
